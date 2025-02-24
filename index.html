@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -9,11 +9,13 @@
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: #fffeaf;
-            background-image: url('https://assets.pinterest.com/ext/embed.html?id=675399275363907558'); /* Fondo con textura de bocetos */
+            background-image: url('https://assets.pinterest.com/ext/embed.html?id=675399275363907558');
             margin: 0;
             padding: 0;
             text-align: center;
             color: #ff8fab;
+            transition: background-color 0.5s ease;
+            overflow: hidden; /* Evita barras de desplazamiento innecesarias */
         }
 
         h1 {
@@ -21,6 +23,7 @@
             color: #ff5db5;
             font-size: 3rem;
             margin-top: 30px;
+            transition: color 0.3s ease;
         }
 
         #calendar {
@@ -29,6 +32,7 @@
             justify-content: center;
             margin-top: 30px;
             gap: 50px;
+            z-index: 1;
         }
 
         .week {
@@ -48,6 +52,22 @@
             font-weight: bold;
             color: #ff5db5;
             text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .week:hover {
+            transform: scale(1.05);
+            box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .week.locked:hover {
+            animation: bounce 0.6s ease;
+        }
+
+        @keyframes bounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         .week::before {
@@ -78,21 +98,154 @@
 
         .week.locked {
             background: #f5c7d6;
-            pointer-events: none;
             opacity: 0.6;
+        }
+
+        /* Resaltar la semana actual */
+        .current-week {
+            background-color: #ff5db5;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Efectos de Confeti */
+        .confetti {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            z-index: 100;
+            pointer-events: none;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .confetti div {
+            position: absolute;
+            top: -50px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ff5db5;
+            animation: confettiAnimation 1s forwards;
+        }
+
+        @keyframes confettiAnimation {
+            0% { opacity: 1; transform: translateY(0) rotate(0); }
+            100% { opacity: 0; transform: translateY(300px) rotate(720deg); }
+        }
+
+        /* Estilos para el popup con el sobre */
+        #notification {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 200px;
+            background-color: #ffd3e0;
+            border: 2px solid #ff8fab;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            text-align: center;
+            color: #ff5db5;
+            font-size: 1.5rem;
+            opacity: 0; /* Inicialmente oculto */
+            overflow: hidden;
+            animation: popupBounce 0.7s ease-out; /* Animación de rebote */
+        }
+
+        @keyframes popupBounce {
+            0% { transform: translate(-50%, -50%) scale(0.7); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        #notification.open {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Solapa del sobre que se abre */
+        #notification .flap {
+            width: 100%;
+            height: 50px;
+            background-color: #ff8fab;
+            border-top: 2px solid #ff5db5;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top center;
+            transform: rotateX(90deg); /* Inicialmente cerrado */
+            transition: transform 0.5s ease;
+        }
+
+        #notification.open .flap {
+            transform: rotateX(0deg); /* Abre la solapa */
+        }
+
+        /* Estilo para el mensaje */
+        #notification .message {
+            margin-top: 60px; /* Desplazamos el mensaje hacia abajo para que no se sobreponga a la solapa */
+            opacity: 0;
+            animation: showMessage 1s forwards 0.5s;
+        }
+
+        @keyframes showMessage {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Botón de cerrar */
+        #notification .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff5db5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            animation: escape 0.5s ease;
+        }
+
+        #notification .close-btn:hover {
+            background-color: #ff8fab;
+        }
+
+        @keyframes escape {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <h1>Contando las semanas para verte</h1>
     <div id="calendar"></div>
+    <div class="confetti"></div>
+
+    <!-- Popup de la carta bloqueada -->
+    <div id="notification">
+        <div class="flap"></div>
+        <p class="message">⛔ Impaciente, tendrás que soportarme otra semana más para ver la cartaa</p>
+        <button class="close-btn" onclick="closeNotification()">Cerrar</button>
+    </div>
 
     <script>
         const totalWeeks = 18;
 
         function getCurrentWeek() {
             const today = new Date();
-            const startDate = new Date("2025-02-07");
+            const startDate = new Date("2025-02-24");
             const diff = today - startDate;
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
             return Math.floor(days / 7) + 1;
@@ -113,6 +266,13 @@
                     };
                 } else {
                     weekDiv.classList.add("locked");
+                    weekDiv.onclick = function () {
+                        showLockedMessage();
+                    };
+                }
+
+                if (i === currentWeek) {
+                    weekDiv.classList.add("current-week");
                 }
 
                 const weekNumber = document.createElement("span");
@@ -123,24 +283,44 @@
         }
 
         function openCard(week) {
-            const cardLinks = [
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_1/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_2/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_3/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_4/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_5/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_6/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_7/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_8/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_9/view?usp=sharing',
-                'https://drive.google.com/file/d/ID_DE_LA_CARTA_10/view?usp=sharing'
-            ];
-            
+            const baseURL = "https://paulagarciacirre.github.io/calendariomario/cartas/";
+            const cardLinks = [];
+
+            for (let i = 1; i <= 18; i++) {
+                cardLinks.push(`${baseURL}Semana${i}.pdf`);
+            }
+
             if (week <= getCurrentWeek()) {
                 window.open(cardLinks[week - 1], '_blank');
+                showConfetti();
             } else {
-                alert("Esta carta aún está bloqueada. Espérate a la próxima semana.");
+                showLockedMessage();
             }
+        }
+
+        function showConfetti() {
+            const confettiContainer = document.querySelector(".confetti");
+            const colors = ['#ff5db5', '#42aaff', '#8aff3e', '#fffd42', '#e133ff', '#ffea00'];
+
+            for (let i = 0; i < 200; i++) {  // Aumentamos el número de piezas
+                const confettiPiece = document.createElement("div");
+                confettiPiece.style.left = `${Math.random() * 100}vw`;
+                confettiPiece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confettiPiece.style.animationDelay = `${Math.random() * 2}s`; // Aleatorizamos el tiempo de inicio
+                confettiContainer.appendChild(confettiPiece);
+            }
+        }
+
+        function showLockedMessage() {
+            const notification = document.getElementById("notification");
+            notification.style.display = "block";
+            notification.classList.add("open");
+        }
+
+        function closeNotification() {
+            const notification = document.getElementById("notification");
+            notification.style.display = "none";
+            notification.classList.remove("open");
         }
 
         generateCalendar();
